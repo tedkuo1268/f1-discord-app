@@ -1,0 +1,18 @@
+[project]
+name = "f1-discord-app"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "async-lru>=2.0.5",
+    "matplotlib>=3.10.1",
+    "pandas>=2.2.3",
+    "py-cord>=2.6.1",
+    "pydantic>=2.11.4",
+    "pydantic-settings>=2.9.1",
+    "pymongo>=4.12.1",
+    "python-dotenv>=1.1.0",
+    "requests>=2.32.3",
+    "tabulate>=0.9.0",
+]

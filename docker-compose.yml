@@ -1,0 +1,25 @@
+version: '3'
+services:
+  mongodb:
+    image: mongodb/mongodb-community-server:6.0-ubi8
+    container_name: f1-discord-app-mongodb
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_INITDB_DATABASE=admin
+    volumes:
+      - ./database/data:/data/db
+      - ./database/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "37017:27017" 
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: f1-discord-app-server
+    depends_on:
+      - mongodb
+    volumes:
+      - ./logs:/app/logs
+      - ./app_config.json:/app/app_config.json:ro

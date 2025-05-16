@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 logger.info("Logging is configured.")
 
 
-class Leaderboard(BaseModel):
+class LiveTiming(BaseModel):
     driver_numbers: Optional[List[int]] = None
     driver_names: Optional[Dict[int, str]] = None
     driver_colors: Optional[Dict[int, str]] = None
@@ -26,7 +26,7 @@ class Leaderboard(BaseModel):
 
 
     def to_image_bytes(self) -> BytesIO:
-        logger.info("Converting leaderboard to image bytes...")
+        logger.info("Converting live timing to image bytes...")
         drivers_data = []
         for driver in self.driver_numbers:
             driver_data = {
@@ -113,19 +113,18 @@ class Leaderboard(BaseModel):
         buf.seek(0)
 
         #plt.show()
-        logger.info("Finished converting leaderboard to image bytes.")
+        logger.info("Finished converting live timing to image bytes.")
 
         return buf
     
 
-class LeaderboardBuilder:
+class LiveTimingBuilder:
     def __init__(self, year: int, location: str, session_name: str = 'Race'):
-        self.leaderboard = Leaderboard()
+        self.live_timing = LiveTiming()
         self.year = year
         self.location = location
         self.session_name = session_name
         self.session_key = None   
-        #self.leaderboard = Leaderboard()
 
     async def get_session_key(self) -> None:
         # Get session key from OpenF1 API
@@ -134,8 +133,8 @@ class LeaderboardBuilder:
         logger.info("Finished getting session key.")
         self.session_key = session_key
 
-    async def add_drivers(self) -> "LeaderboardBuilder":
-        logger.info("Adding driver numbers to the leaderboard...")
+    async def add_drivers(self) -> "LiveTimingBuilder":
+        logger.info("Adding driver numbers to the live timing...")
         drivers_data = await OpenF1.get_drivers(
             self.year, self.location, self.session_name
         )
@@ -151,16 +150,16 @@ class LeaderboardBuilder:
             driver_colors[driver_number] = f"#{data.team_colour}"
             team_names[driver_number] = data.team_name
 
-        self.leaderboard.driver_numbers = driver_numbers
-        self.leaderboard.driver_names = driver_names
-        self.leaderboard.driver_colors = driver_colors
-        self.leaderboard.team_names = team_names
+        self.live_timing.driver_numbers = driver_numbers
+        self.live_timing.driver_names = driver_names
+        self.live_timing.driver_colors = driver_colors
+        self.live_timing.team_names = team_names
         logger.info("Finished adding driver numbers.")
 
         return self
 
     async def add_positions(self):
-        logger.info("Adding position data to the leaderboard...")
+        logger.info("Adding position data to the live timing...")
         position_data = await OpenF1.get_position(self.session_key)
 
         processed_data = {}
@@ -169,13 +168,13 @@ class LeaderboardBuilder:
             driver_number = data.get("driver_number")
             processed_data[driver_number] = data.get("position")
 
-        self.leaderboard.positions = processed_data
+        self.live_timing.positions = processed_data
         logger.info("Finished adding position data.")
 
         return self
 
     async def add_intervals(self):
-        logger.info("Adding intervals to the leaderboard...")
+        logger.info("Adding intervals to the live timing...")
         intervals_data = await OpenF1.get_intervals(self.session_key)
 
         intervals = {}
@@ -185,14 +184,14 @@ class LeaderboardBuilder:
             intervals[driver_number] = data.get("interval")
             gaps_to_leader[driver_number] = data.get("gap_to_leader")
 
-        self.leaderboard.intervals = intervals 
-        self.leaderboard.gaps_to_leader = gaps_to_leader
-        logger.info("Finished adding intervals to the leaderboard.")
+        self.live_timing.intervals = intervals 
+        self.live_timing.gaps_to_leader = gaps_to_leader
+        logger.info("Finished adding intervals.")
 
         return self
 
     async def add_pit_stops(self):
-        logger.info("Adding pit stops data to the leaderboard...")
+        logger.info("Adding pit stops data to the live timing...")
         pit_stops_data = await OpenF1.get_pit_stops(self.session_key)
 
         pit_stops = {}
@@ -200,13 +199,13 @@ class LeaderboardBuilder:
             driver_number = data.get("driver_number")
             pit_stops[driver_number] = int(pit_stops.get(driver_number, 0) + 1)
 
-        self.leaderboard.pit_stops = pit_stops
+        self.live_timing.pit_stops = pit_stops
         logger.info("Finished adding pit stops data.")
 
         return self
 
     async def add_tyres(self):
-        logger.info("Adding tyres data to the leaderboard...")
+        logger.info("Adding tyres data to the live timing...")
         tyres_data = await OpenF1.get_tyres(self.session_key)
 
         tyres_compound = {}
@@ -216,11 +215,11 @@ class LeaderboardBuilder:
             tyres_compound[driver_number] = data.get("compound")
             tyres_age[driver_number] = int(data.get("tyre_age_at_start") + data.get("lap_end") - data.get("lap_start"))
 
-        self.leaderboard.tyres_compound = tyres_compound
-        self.leaderboard.tyres_age = tyres_age
+        self.live_timing.tyres_compound = tyres_compound
+        self.live_timing.tyres_age = tyres_age
         logger.info("Finished adding tyres data.")
 
         return self
 
-    def build(self) -> "Leaderboard":
-        return self.leaderboard
+    def build(self) -> "LiveTiming":
+        return self.live_timing

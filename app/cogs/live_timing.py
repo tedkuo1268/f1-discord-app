@@ -4,7 +4,7 @@ import time
 import discord
 from discord.ext import commands
 
-from app.services import leaderboard as lb
+from app.services import live_timing as lt
 from app.cogs.helpers import get_years, get_locations
 
 import logging
@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 logger.info("Logging is configured.")
 
 
-class Leaderboard(commands.Cog):
+class LiveTiming(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @discord.slash_command(name="leaderboard")
+    @discord.slash_command(name="live-timing")
     @discord.option(
         name="year",
         type=discord.SlashCommandOptionType.string,
@@ -27,13 +27,13 @@ class Leaderboard(commands.Cog):
         type=discord.SlashCommandOptionType.string,
         autocomplete=discord.utils.basic_autocomplete(get_locations)
     )
-    async def leaderboard(
+    async def live_timing(
         self,
         ctx: discord.ApplicationContext,
         year: discord.SlashCommandOptionType.string,
         location: discord.SlashCommandOptionType.string
     ):
-        await ctx.respond(f"Select the fields for the leaderboard for {year} {location} Grand Prix. Default: `[Driver Number, Position]`", view=LeaderboardView(year, location))
+        await ctx.respond(f"Select the fields for the Live Timing for {year} {location} Grand Prix. Default: `[Driver Number, Position]`", view=LiveTimingView(year, location))
 
 
     @commands.Cog.listener() # we can add event listeners to our cog
@@ -44,7 +44,7 @@ class Leaderboard(commands.Cog):
         await member.send('Welcome to the server!')
 
 
-class LeaderboardView(discord.ui.View):
+class LiveTimingView(discord.ui.View):
     def __init__(self, year: int, location: str):
         super().__init__()
         self.year = year
@@ -76,7 +76,7 @@ class LeaderboardView(discord.ui.View):
         try:
             t0 = time.time()
             await interaction.response.defer()
-            builder = lb.LeaderboardBuilder(self.year, self.location)
+            builder = lt.LiveTimingBuilder(self.year, self.location)
             await builder.get_session_key()
             tasks = [
                 builder.add_drivers(),
@@ -90,21 +90,21 @@ class LeaderboardView(discord.ui.View):
                 tasks.append(builder.add_tyres())
             
             await asyncio.gather(*tasks)
-            leaderboard = builder.build()
+            live_timing = builder.build()
             t1 = time.time()
             building_time = t1 - t0
-            logger.info(f"Time taken to build leaderboard: {building_time} seconds")
+            logger.info(f"Time taken to build live_timing: {building_time} seconds")
             t0 = time.time()
-            image_bytes = leaderboard.to_image_bytes()
+            image_bytes = live_timing.to_image_bytes()
             t1 = time.time()
             image_conversion_time = t1 - t0
             logger.info(f"Time taken to convert to image bytes: {image_conversion_time} seconds")
             logger.info(f"Total time: {building_time + image_conversion_time} seconds")
             #await interaction.response.send_message(table)
-            await interaction.followup.send(file=discord.File(image_bytes, filename="leaderboard.png"))
+            await interaction.followup.send(file=discord.File(image_bytes, filename="live_timing.png"))
         except Exception as e:
             logger.exception(e)
             await interaction.followup.send(f"An error occurred, please try it again.")
 
 def setup(bot): # this is called by Pycord to setup the cog
-    bot.add_cog(Leaderboard(bot)) # add the cog to the bot
+    bot.add_cog(LiveTiming(bot)) # add the cog to the bot

@@ -14,7 +14,7 @@ wheels/
 
 keys/
 app_config*.json
-database/
+database/data
 logs/
 test.py
 

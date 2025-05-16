@@ -1,0 +1,11 @@
+{
+    "openf1": {
+        "url": "https://api.openf1.org/v1"
+    },
+    "mongodb": {
+        "host": "f1-discord-app-mongodb",
+        "port": 27017,
+        "username": "",
+        "password": ""
+    }
+}

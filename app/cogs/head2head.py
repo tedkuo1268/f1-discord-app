@@ -6,6 +6,7 @@ from discord.ext import commands
 
 from app.cogs.helpers import get_years, get_locations, get_drivers
 from app.services import head2head as h2h
+from app.exceptions import OpenF1Error
 
 import logging
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ class Head2Head(commands.Cog):
     @discord.slash_command(name="h2h")
     @discord.option(
         name="year",
-        type=discord.SlashCommandOptionType.string,
+        type=discord.SlashCommandOptionType.integer,
         choices=get_years()
     )
     @discord.option(
@@ -46,12 +47,17 @@ class Head2Head(commands.Cog):
     async def head2head(
         self,
         ctx: discord.ApplicationContext,
-        year: discord.SlashCommandOptionType.string,
+        year: discord.SlashCommandOptionType.integer,
         location: discord.SlashCommandOptionType.string,
         driver1: discord.SlashCommandOptionType.integer,
         driver2: discord.SlashCommandOptionType.integer,
         num_of_laps: discord.SlashCommandOptionType.integer
-    ):
+    ):  
+        logger.info(f"Head-to-head command invoked by user [{ctx.interaction.user.id}|{ctx.interaction.user.name}]")
+        if driver1 == driver2:
+            await ctx.respond("Please select two different drivers.")
+            return
+        
         await ctx.respond(
             f"Press the button to see the head-to-head result between {driver1} and {driver2} for {year} {location} Grand Prix", 
             view=Head2HeadView(year, location, driver1, driver2, num_of_laps)
@@ -70,6 +76,8 @@ class Head2HeadView(discord.ui.View):
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.primary)
     async def button_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
         try:
+            logger.info(f"Start processing head-to-head comparison between {self.driver1} and {self.driver2} for {self.year} {self.location} Grand Prix for user [{interaction.user.id}|{interaction.user.name}]")
+            
             await interaction.response.defer()
             t0 = time.time()
             builder = h2h.Head2HeadBuilder(self.year, self.location)
@@ -84,21 +92,22 @@ class Head2HeadView(discord.ui.View):
             head2head = builder.build()
             t1 = time.time()
             building_time = t1 - t0
-            logger.info(f"Time taken to build leaderboard: {building_time} seconds")
+            logger.debug(f"Time taken to build head2head: {building_time} seconds")
 
             t0 = time.time()
             image_bytes = head2head.to_image_bytes()
             t1 = time.time()
             image_conversion_time = t1 - t0
-            logger.info(f"Time taken to convert to image bytes: {image_conversion_time} seconds")
-            logger.info(f"Total time: {building_time + image_conversion_time} seconds")
+            logger.debug(f"Time taken to convert to image bytes: {image_conversion_time} seconds")
+            logger.debug(f"Total time: {building_time + image_conversion_time} seconds")
 
             await interaction.followup.send(f"{head2head.driver_names[1]}'s gap to {head2head.driver_names[0]}: {head2head.current_interval} seconds")
             await interaction.followup.send(file=discord.File(image_bytes, filename="head2head.png"))
-
+        except OpenF1Error as e:
+            await interaction.followup.send(f"OpenF1 API timed out, please try it again.")
         except Exception as e:
             logger.exception(e)
-            await interaction.followup.send(f"An error occurred, please try it again.")
+            await interaction.followup.send(f"An error occurred.")
 
 
 def setup(bot): # this is called by Pycord to setup the cog

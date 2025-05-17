@@ -6,6 +6,11 @@ from async_lru import alru_cache
 from app.app_config import AppConfig
 from app.database import db
 from app.services.models import Driver
+from app.exceptions import OpenF1Error, DatabaseError
+
+import logging
+logger = logging.getLogger(__name__)
+logger.info("Logging is configured.")
 
 app_config_path = os.getenv("APP_CONFIG_PATH", f"{Path(__file__).parent.parent.parent.resolve()}/app_config.json")
 app_config = AppConfig.from_json(app_config_path)
@@ -22,7 +27,8 @@ class OpenF1:
                     result = await r.json()
                     return result[0].get("session_key")
                 else:
-                    raise Exception(f"Error: {r.status} - {await r.text()}")
+                    logger.error(f"Error getting session key: {r.status} - {await r.text()}")
+                    raise OpenF1Error(f"Error getting session key: {r.status} - {await r.text()}")
 
     @staticmethod
     @alru_cache(ttl=3600)
@@ -30,6 +36,7 @@ class OpenF1:
         driver_repo = OpenF1DriversRepository()
         drivers = await driver_repo.find(year=int(year), location=location, session_name=session_name)  
         if len(drivers) > 0:
+            logger.info(f"Found {len(drivers)} drivers in the database.")
             return drivers
 
         session_key = await OpenF1.get_session_key(year, location, session_name)
@@ -47,7 +54,8 @@ class OpenF1:
                         await driver_repo.insert(Driver(**driver))
                     return [Driver(**driver) for driver in drivers]
                 else:
-                    raise Exception(f"Error: {r.status} - {await r.text()}")
+                    logger.error(f"Error getting drivers: {r.status} - {await r.text()}")
+                    raise OpenF1Error(f"Error getting drivers: {r.status} - {await r.text()}")
 
     @staticmethod
     @alru_cache(ttl=10)
@@ -58,7 +66,8 @@ class OpenF1:
                 if r.status == 200:
                     return await r.json()
                 else:
-                    raise Exception(f"Error: {r.status} - {await r.text()}")
+                    logger.error(f"Error getting positions: {r.status} - {await r.text()}")
+                    raise OpenF1Error(f"Error getting positions: {r.status} - {await r.text()}")
                 
     @staticmethod
     @alru_cache(ttl=10)
@@ -72,7 +81,8 @@ class OpenF1:
                 if r.status == 200:
                     return await r.json()
                 else:
-                    raise Exception(f"Error: {r.status} - {await r.text()}")
+                    logger.error(f"Error getting intervals: {r.status} - {await r.text()}")
+                    raise OpenF1Error(f"Error getting intervals: {r.status} - {await r.text()}")
                 
     @staticmethod
     @alru_cache(ttl=30)
@@ -83,7 +93,8 @@ class OpenF1:
                 if r.status == 200:
                     return await r.json()
                 else:
-                    raise Exception(f"Error: {r.status} - {await r.text()}")
+                    logger.error(f"Error getting pit stops: {r.status} - {await r.text()}")
+                    raise OpenF1Error(f"Error getting pit stops: {r.status} - {await r.text()}")
                 
     @staticmethod
     @alru_cache(ttl=30)
@@ -94,7 +105,8 @@ class OpenF1:
                 if r.status == 200:
                     return await r.json()
                 else:
-                    raise Exception(f"Error: {r.status} - {await r.text()}")
+                    logger.error(f"Error getting tyres: {r.status} - {await r.text()}")
+                    raise OpenF1Error(f"Error getting tyres: {r.status} - {await r.text()}")
                 
     @staticmethod
     @alru_cache(ttl=10)
@@ -105,18 +117,24 @@ class OpenF1:
                 if r.status == 200:
                     return await r.json()
                 else:
-                    raise Exception(f"Error: {r.status} - {await r.text()}")
+                    logger.error(f"Error getting lap times: {r.status} - {await r.text()}")
+                    raise OpenF1Error(f"Error getting lap times: {r.status} - {await r.text()}")
 
-    
 
 class OpenF1DriversRepository:
     def __init__(self):
         self.collection = db["drivers"]
 
     async def find(self, **kwargs) -> list[Driver]:
-        cursor = self.collection.find(kwargs)
-        drivers = await cursor.to_list()
+        try:
+            cursor = self.collection.find(kwargs)
+            drivers = await cursor.to_list()
+        except Exception as e:
+            raise DatabaseError(f"Error finding drivers: {e}")
         return [Driver(**driver) for driver in drivers] if drivers else []
     
     async def insert(self, driver: Driver):
-        await self.collection.insert_one(driver.model_dump())
+        try:
+            await self.collection.insert_one(driver.model_dump())
+        except Exception as e:
+            raise DatabaseError(f"Error inserting driver: {e}")

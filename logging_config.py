@@ -22,8 +22,8 @@ LOGGING_CONFIG = {
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': 'logs/app.log',
             'mode': 'a',  # Append mode
-            'maxBytes': 10485760,  # 10 MB
-            'backupCount': 5,      # Keep 5 backup files
+            'maxBytes': 10485760, 
+            'backupCount': 5,     
         },
     },
     'loggers': { 

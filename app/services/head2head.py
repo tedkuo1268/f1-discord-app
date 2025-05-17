@@ -89,12 +89,23 @@ class Head2Head(BaseModel):
                     cell.set_text_props(color='white')
             else:
                 cell.set_text_props(color='white')
-            cell.set_facecolor('#333333')
+            
+            # Separate laps by different background colors
+            if key[0] > 0 and key[1] % 8 <= 3:
+                cell.set_facecolor('#444444')
+            elif key[0] > 0 and key[1] % 8 > 3:
+                cell.set_facecolor('#555555')
             
         # Style header cells
         for i in range(len(flattened_columns)):
             header_cell = table[(0, i)]
-            header_cell.set_facecolor('#222222')
+
+            # Separate laps by different background colors
+            if i % 8 <= 3:
+                header_cell.set_facecolor('#222222')
+            else:
+                header_cell.set_facecolor('#333333')
+                
             header_cell.set_text_props(fontweight='bold')
         
         # Apply driver colors to index cells

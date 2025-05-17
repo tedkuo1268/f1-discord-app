@@ -3,15 +3,27 @@ from async_lru import alru_cache
 
 from app.services.openf1 import OpenF1
 from app.database import db
+from app.exceptions import DatabaseError
+
+import logging
+logger = logging.getLogger(__name__)
+logger.info("Logging is configured.")
 
 def get_years():
-    year_choices = ["2024", "2025"]
+    year_choices = [2024, 2025]
     return year_choices
 
 @alru_cache(ttl=3600)
 async def get_locations(ctx: discord.AutocompleteContext):
-    year = ctx.options['year']
-    result = await db["locations"].find_one({"year": year}) 
+    try:
+        year = ctx.options['year']
+        result = await db["locations"].find_one({"year": year}) 
+        if result is None:
+            logger.info(f"No locations found for year {year}.")
+            return []
+    except Exception as e:
+        logger.error(f"Error finding locations: {e}")
+        raise DatabaseError(f"Error finding locations: {e}")
     return result["locations"]
 
 @alru_cache(ttl=3600)

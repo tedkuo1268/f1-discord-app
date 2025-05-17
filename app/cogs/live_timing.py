@@ -6,6 +6,7 @@ from discord.ext import commands
 
 from app.services import live_timing as lt
 from app.cogs.helpers import get_years, get_locations
+from app.exceptions import OpenF1Error
 
 import logging
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ class LiveTiming(commands.Cog):
     @discord.slash_command(name="live-timing")
     @discord.option(
         name="year",
-        type=discord.SlashCommandOptionType.string,
+        type=discord.SlashCommandOptionType.integer,
         choices=get_years()
     )
     @discord.option(
@@ -30,9 +31,10 @@ class LiveTiming(commands.Cog):
     async def live_timing(
         self,
         ctx: discord.ApplicationContext,
-        year: discord.SlashCommandOptionType.string,
+        year: discord.SlashCommandOptionType.integer,
         location: discord.SlashCommandOptionType.string
     ):
+        logger.info(f"Live Timing command invoked by user [{ctx.interaction.user.id}|{ctx.interaction.user.name}]")
         await ctx.respond(f"Select the fields for the Live Timing for {year} {location} Grand Prix. Default: `[Driver Number, Position]`", view=LiveTimingView(year, location))
 
 
@@ -74,6 +76,8 @@ class LiveTimingView(discord.ui.View):
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.primary)
     async def button_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
         try:
+            logger.info(f"Start processing live timing for {self.year} {self.location} Grand Prix for user [{interaction.user.id}|{interaction.user.name}]")
+            logger.info(f"Selected fields: {self.selected_values}")
             t0 = time.time()
             await interaction.response.defer()
             builder = lt.LiveTimingBuilder(self.year, self.location)
@@ -93,15 +97,17 @@ class LiveTimingView(discord.ui.View):
             live_timing = builder.build()
             t1 = time.time()
             building_time = t1 - t0
-            logger.info(f"Time taken to build live_timing: {building_time} seconds")
+            logger.debug(f"Time taken to build live_timing: {building_time} seconds")
             t0 = time.time()
             image_bytes = live_timing.to_image_bytes()
             t1 = time.time()
             image_conversion_time = t1 - t0
-            logger.info(f"Time taken to convert to image bytes: {image_conversion_time} seconds")
-            logger.info(f"Total time: {building_time + image_conversion_time} seconds")
+            logger.debug(f"Time taken to convert to image bytes: {image_conversion_time} seconds")
+            logger.debug(f"Total time: {building_time + image_conversion_time} seconds")
             #await interaction.response.send_message(table)
             await interaction.followup.send(file=discord.File(image_bytes, filename="live_timing.png"))
+        except OpenF1Error as e:
+            await interaction.followup.send(f"OpenF1 API timed out, please try it again.")
         except Exception as e:
             logger.exception(e)
             await interaction.followup.send(f"An error occurred, please try it again.")

@@ -3,8 +3,11 @@ import discord
 import dotenv
 import logging.config
 
+import logging
 from logging_config import LOGGING_CONFIG
 logging.config.dictConfig(LOGGING_CONFIG)
+logger = logging.getLogger(__name__)
+logger.info("Logging is configured.")
 
 dotenv.load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")

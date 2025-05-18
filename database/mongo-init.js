@@ -1,11 +1,9 @@
-db.createUser(
-    {
-      user: process.env.MONGODB_INITDB_ROOT_USERNAME,
-      pwd: process.env.MONGODB_INITDB_ROOT_PASSWORD,
-      roles: [
-        { role: "userAdminAnyDatabase", db: "admin" },
-        { role: "readWriteAnyDatabase", db: "admin" },
-        { role: "dbAdminAnyDatabase", db: "admin" }
-      ]
-    }
-  );
+// mongo-init.js
+db = db.getSiblingDB('f1_discord_app');
+
+// Create collection
+db.createCollection('locations');
+
+// Create indexes
+db.locations.createIndex({ meeting_key: 1 }, { unique: true });
+

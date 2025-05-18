@@ -9,7 +9,7 @@ services:
       - MONGODB_INITDB_DATABASE=admin
     volumes:
       - mongodb_data:/data/db
-      #- ./database/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./database/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     ports:
       - "37017:27017" 
     restart: always

@@ -1,6 +1,6 @@
-# F1 Discord Bot
+# F1 Discord App
 
-A Discord bot that provides real-time Formula 1 race information using the OpenF1 API. The bot enables users to view live race standings, compare drivers head-to-head, and get detailed information about F1 race sessions. The data for this project is sourced from [OpenF1](https://openf1.org). Please visit the website for more details. 
+A Discord app that provides real-time Formula 1 race information using the OpenF1 API. The app enables users to view live race standings, compare drivers head-to-head, and get detailed information about F1 race sessions. The data for this project is sourced from [OpenF1](https://openf1.org). Please visit the website for more details. 
 
 ## Install the F1 Discord App
 
@@ -47,11 +47,26 @@ If you would like to test and develop with your own Discord app, please follow t
 
 4. Set up environment variables and config file:
     ```bash
-    # Add the Discord token you got from Step 1 here.
-    # 
+    # Add the Discord app token you got from Step 1 here.
+    # Add your MongoDB credential details if you want to initialize the database with docker compose.
+    # If you are using your own MongoDB, then you can skip the MongoDb credential part.
     cp .env.example .env
+
+    # Edit your MongoDB connection details
     cp app_config.json.example app_config.json
     ```
 
+5. (*Optional*) If you would like to run MongoDB using the provided docker compose, just comment out the app service part and run:
+    ```
+    docker compose up -d
+    ```
+
+6. Run the app:
+    ```bash
+    source .venv/bin/activate   # .venv will automatically be created when you run uv sync.
+    python main.py
+    ```
 
 ## Docker Deployment
+
+If you want to deploy the app service with docker, just go through the step 4 and 5 (without commenting out anything) from the previous part, and your service will be ready to go.

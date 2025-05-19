@@ -104,8 +104,8 @@ class LiveTimingView(discord.ui.View):
             image_conversion_time = t1 - t0
             logger.debug(f"Time taken to convert to image bytes: {image_conversion_time} seconds")
             logger.debug(f"Total time: {building_time + image_conversion_time} seconds")
-            #await interaction.response.send_message(table)
             await interaction.followup.send(file=discord.File(image_bytes, filename="live_timing.png"))
+            image_bytes.close()
         except OpenF1Error as e:
             await interaction.followup.send(f"OpenF1 API timed out, please try it again.")
         except Exception as e:

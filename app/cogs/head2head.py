@@ -103,6 +103,7 @@ class Head2HeadView(discord.ui.View):
 
             await interaction.followup.send(f"{head2head.driver_names[1]}'s gap to {head2head.driver_names[0]}: {head2head.current_interval} seconds")
             await interaction.followup.send(file=discord.File(image_bytes, filename="head2head.png"))
+            image_bytes.close()
         except OpenF1Error as e:
             await interaction.followup.send(f"OpenF1 API timed out, please try it again.")
         except Exception as e:

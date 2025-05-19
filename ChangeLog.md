@@ -1,5 +1,9 @@
 # ChangeLog
 
+## 2025-05-19
+- Fix:
+    - Close fig and buffer when finished to release memory.
+
 ## 2025-05-18
 - Feat:
     - Upsert locations for current year into collection every one hour.

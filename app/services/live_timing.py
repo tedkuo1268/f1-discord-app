@@ -111,6 +111,7 @@ class LiveTiming(BaseModel):
         buf = BytesIO()
         plt.savefig(buf, format='png', bbox_inches='tight')
         buf.seek(0)
+        plt.close(fig)
 
         #plt.show()
         logger.info("Finished converting live timing to image bytes.")

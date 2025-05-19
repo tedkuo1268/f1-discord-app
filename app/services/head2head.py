@@ -121,9 +121,9 @@ class Head2Head(BaseModel):
 
         # Save to BytesIO
         buf = BytesIO()
-        plt.tight_layout()
         plt.savefig(buf, format='png', bbox_inches='tight')
         buf.seek(0)
+        plt.close(fig)
         
         logger.info("Finished converting head2head to image bytes.")
         

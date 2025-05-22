@@ -4,7 +4,7 @@ A Discord app that provides real-time Formula 1 race information using the OpenF
 
 ## Install the F1 Discord App
 
-To install the production F1 Discord App, please click this [link](https://discord.com/oauth2/authorize?client_id=1372934394687524874) and install it to your server or your user account.
+To install the production F1 Discord App, please click this [link](https://discord.com/oauth2/authorize?client_id=1368170461258842224) and install it to your server or your user account.
 
 ## Features
 

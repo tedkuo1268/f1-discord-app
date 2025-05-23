@@ -1,5 +1,9 @@
 # ChangeLog
 
+## 2025-05-24
+- Feat:
+    - `/live-timing` and `h2h` now support all the session types (Practice, Qualifying, Sprint, Race)
+
 ## 2025-05-19
 - Fix:
     - Close fig and buffer when finished to release memory.

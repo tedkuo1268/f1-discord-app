@@ -26,6 +26,8 @@ class OpenF1:
             async with session.get(url, params={"year": year, "location": location, "session_name": session_name}) as r:
                 if r.status == 200:
                     result = await r.json()
+                    if len(result) == 0:
+                        return None
                     return result[0].get("session_key")
                 else:
                     logger.error(f"Error getting session key: {r.status} - {await r.text()}")

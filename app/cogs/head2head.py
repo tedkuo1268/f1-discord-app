@@ -7,6 +7,7 @@ from discord.ext import commands
 
 from app.cogs.helpers import get_years, get_locations, get_drivers_select_options
 from app.services import head2head as h2h
+from app.services.openf1 import OpenF1
 from app.exceptions import OpenF1Error
 
 import logging
@@ -42,6 +43,11 @@ class Head2Head(commands.Cog):
         session_name: discord.SlashCommandOptionType.string
     ):  
         logger.info(f"Head-to-head command invoked by user [{ctx.interaction.user.id}|{ctx.interaction.user.name}]")
+        session_key = await OpenF1.get_session_key(year, location, session_name)
+        if not session_key:
+            await ctx.respond(f"{year} {location} doesn't have {session_name} or {session_name} hasn't started yet. Please select another session.")
+            return
+        
         driver_options = await get_drivers_select_options(year, location, session_name)
         await ctx.respond(
             f"Select drivers and number of laps to see the head-to-head result for {year} {location} Grand Prix {session_name} session.", 
@@ -49,32 +55,30 @@ class Head2Head(commands.Cog):
         )
 
 class DriversSelect(discord.ui.Select):
-    def __init__(self, driver_options: List[discord.SelectOption]):
+    def __init__(self, placeholder: str, driver_options: List[discord.SelectOption]):
         super().__init__(
-            placeholder="Choose an option...",
-            min_values=2,
-            max_values=2,
+            placeholder=placeholder,
+            min_values=1,
+            max_values=1,
             options=driver_options
         )
     
     async def callback(self, interaction: discord.Interaction):
-        print(f"Selected values: {self.values}")
-        self.selected_values = self.values
+        #print(f"Selected values: {self.values}")
         await interaction.response.defer()
 
 
 class NumLapsSelect(discord.ui.Select):
     def __init__(self):
         super().__init__(
-            placeholder="Choose an option...",
+            placeholder="Select number of laps...",
             min_values=1,
             max_values=1,
             options=[discord.SelectOption(label=str(i)) for i in range(1, 6)],
         )
     
     async def callback(self, interaction: discord.Interaction):
-        print(f"Selected values: {self.values}")
-        self.selected_values = self.values
+        #print(f"Selected values: {self.values}")
         await interaction.response.defer()
 
 
@@ -85,23 +89,29 @@ class Head2HeadView(discord.ui.View):
         self.location = location
         self.session_name = session_name
         self.driver_options = driver_options
-        self.drivers_select = DriversSelect(driver_options)
+        self.driver1_select = DriversSelect("Select the first driver...", driver_options)
+        self.driver2_select = DriversSelect("Select the second driver", driver_options)
         self.num_laps_select = NumLapsSelect()
 
-        self.add_item(self.drivers_select)
+        self.add_item(self.driver1_select)
+        self.add_item(self.driver2_select)
         self.add_item(self.num_laps_select)
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.primary)
     async def button_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
         try:
-            driver1 = int(self.drivers_select.values[0])
-            driver2 = int(self.drivers_select.values[1])
+            driver1 = int(self.driver1_select.values[0])
+            driver2 = int(self.driver2_select.values[0])
             num_of_laps = int(self.num_laps_select.values[0])
+            if driver1 == driver2:
+                await interaction.respond("Please select two different drivers.")
+                return
+        
             logger.info(f"Start processing head-to-head comparison between {driver1} and {driver2} for {self.year} {self.location} Grand Prix for user [{interaction.user.id}|{interaction.user.name}]")
             
             await interaction.response.defer()
             t0 = time.time()
-            builder = h2h.Head2HeadBuilder(self.year, self.location)
+            builder = h2h.Head2HeadBuilder(self.year, self.location, self.session_name)
             await builder.get_session_key()
             tasks = [
                 builder.add_drivers(driver1, driver2),
@@ -122,7 +132,11 @@ class Head2HeadView(discord.ui.View):
             logger.debug(f"Time taken to convert to image bytes: {image_conversion_time} seconds")
             logger.debug(f"Total time: {building_time + image_conversion_time} seconds")
 
-            await interaction.followup.send(f"{head2head.driver_names[1]}'s gap to {head2head.driver_names[0]}: {head2head.current_interval} seconds")
+            if head2head.current_interval > 0:
+                interval_message = f"{head2head.driver_names[1]}'s gap to {head2head.driver_names[0]}: {head2head.current_interval} seconds"
+            else:
+                interval_message = f"{head2head.driver_names[0]}'s gap to {head2head.driver_names[1]}: {-head2head.current_interval} seconds"
+            await interaction.followup.send(interval_message)
             await interaction.followup.send(file=discord.File(image_bytes, filename="head2head.png"))
             image_bytes.close()
         except OpenF1Error as e:

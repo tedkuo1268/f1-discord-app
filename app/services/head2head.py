@@ -183,52 +183,47 @@ class Head2HeadBuilder:
                 driver2_laps.append(data)
         
         last_lap = min(len(driver1_laps), len(driver2_laps))
-        driver1_laps, driver2_laps = driver1_laps[:last_lap], driver2_laps[:last_lap]
+        driver1_laps, driver2_laps = driver1_laps[max(0, last_lap - num_of_laps):last_lap], driver2_laps[max(0, last_lap - num_of_laps):last_lap]
 
         lap_times = [[], []]
         sector_times = [[], []]
         laps = []
-        curr_lap = last_lap - 1
-        i = 0
-        while curr_lap >= 0 and i < num_of_laps:
-            laps.append(curr_lap + 1)
+        for d1_lap, d2_lap in zip(driver1_laps, driver2_laps):
+            laps.append(d1_lap.get("lap_number"))
 
             try:
-                lap_times[0].append(driver1_laps[curr_lap].get("lap_duration"))
+                lap_times[0].append(d1_lap.get("lap_duration"))
             except Exception as e:
-                print(e)
+                logger.warning(f"Error getting lap time for driver 1: {e}")
                 lap_times[0].append("N/A")
             try:
-                lap_times[1].append(round(driver2_laps[curr_lap].get("lap_duration") - driver1_laps[curr_lap].get("lap_duration"), 3)) # The lap time difference between driver 2 and driver 1
+                lap_times[1].append(round(d2_lap.get("lap_duration") - d1_lap.get("lap_duration"), 3)) # The lap time difference between driver 2 and driver 1
             except Exception as e:
-                print(e)
+                logger.warning(f"Error getting lap time difference between driver 1 and driver 2: {e}")
                 lap_times[1].append("N/A")
 
             try:
                 sector_times[0].append([
-                    driver1_laps[curr_lap].get("duration_sector_1"), 
-                    driver1_laps[curr_lap].get("duration_sector_2"), 
-                    driver1_laps[curr_lap].get("duration_sector_3")
+                    d1_lap.get("duration_sector_1"), 
+                    d1_lap.get("duration_sector_2"), 
+                    d1_lap.get("duration_sector_3")
                 ])
             except Exception as e:
-                print(e)
+                logger.warning(f"Error getting sector times for driver 1: {e}")
                 sector_times[0].append(["N/A", "N/A", "N/A"])
             try:
                 sector_times[1].append([
-                    round(driver2_laps[curr_lap].get("duration_sector_1") - driver1_laps[curr_lap].get("duration_sector_1"), 3), 
-                    round(driver2_laps[curr_lap].get("duration_sector_2") - driver1_laps[curr_lap].get("duration_sector_2"), 3), 
-                    round(driver2_laps[curr_lap].get("duration_sector_3") - driver1_laps[curr_lap].get("duration_sector_3"), 3)
+                    round(d2_lap.get("duration_sector_1") - d1_lap.get("duration_sector_1"), 3), 
+                    round(d2_lap.get("duration_sector_2") - d1_lap.get("duration_sector_2"), 3), 
+                    round(d2_lap.get("duration_sector_3") - d1_lap.get("duration_sector_3"), 3)
                 ])
             except Exception as e:
-                print(e)
+                logger.warning(f"Error getting sector times difference between driver 1 and driver 2: {e}")
                 sector_times[1].append(["N/A", "N/A", "N/A"])
-
-            curr_lap -= 1
-            i += 1
 
         self.h2h.lap_times = lap_times
         self.h2h.sector_times = sector_times
-        self.h2h.laps = sorted(laps)
+        self.h2h.laps = laps
         logger.info("Finished adding lap and sector times.")
 
         return self

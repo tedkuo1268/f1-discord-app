@@ -44,7 +44,7 @@ class LiveTiming(commands.Cog):
         logger.info(f"Live Timing command invoked by user [{ctx.interaction.user.id}|{ctx.interaction.user.name}]")
         session_key = await OpenF1.get_session_key(year, location, session_name)
         if not session_key:
-            await ctx.respond(f"{year} {location} doesn't have {session_name}. Please select another session.")
+            await ctx.respond(f"{year} {location} doesn't have {session_name} or {session_name} hasn't started yet. Please select another session.")
             return
         await ctx.respond(f"Select the fields for the Live Timing for {year} {location} Grand Prix {session_name} session. Default: `[Driver Number, Position]`", view=LiveTimingView(year, location, session_name))
 

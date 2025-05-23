@@ -3,6 +3,8 @@
 ## 2025-05-24
 - Feat:
     - `/live-timing` and `h2h` now support all the session types (Practice, Qualifying, Sprint, Race)
+- Fix:
+    - head2head lap and sector times order.
 
 ## 2025-05-19
 - Fix:

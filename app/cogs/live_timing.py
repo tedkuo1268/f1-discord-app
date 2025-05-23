@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands
 
 from app.services import live_timing as lt
+from app.services.openf1 import OpenF1
 from app.cogs.helpers import get_years, get_locations
 from app.exceptions import OpenF1Error
 
@@ -28,29 +29,32 @@ class LiveTiming(commands.Cog):
         type=discord.SlashCommandOptionType.string,
         autocomplete=discord.utils.basic_autocomplete(get_locations)
     )
+    @discord.option(
+        name="session_name",
+        type=discord.SlashCommandOptionType.string,
+        choices=["Practice 1", "Practice 2", "Practice 3", "Sprint Qualifying", "Qualifying", "Sprint", "Race"]
+    )
     async def live_timing(
         self,
         ctx: discord.ApplicationContext,
         year: discord.SlashCommandOptionType.integer,
-        location: discord.SlashCommandOptionType.string
+        location: discord.SlashCommandOptionType.string,
+        session_name: discord.SlashCommandOptionType.string
     ):
         logger.info(f"Live Timing command invoked by user [{ctx.interaction.user.id}|{ctx.interaction.user.name}]")
-        await ctx.respond(f"Select the fields for the Live Timing for {year} {location} Grand Prix. Default: `[Driver Number, Position]`", view=LiveTimingView(year, location))
-
-
-    @commands.Cog.listener() # we can add event listeners to our cog
-    async def on_member_join(self, member): # this is called when a member joins the server
-    # you must enable the proper intents
-    # to access this event.
-    # See the Popular-Topics/Intents page for more info
-        await member.send('Welcome to the server!')
+        session_key = await OpenF1.get_session_key(year, location, session_name)
+        if not session_key:
+            await ctx.respond(f"{year} {location} doesn't have {session_name}. Please select another session.")
+            return
+        await ctx.respond(f"Select the fields for the Live Timing for {year} {location} Grand Prix {session_name} session. Default: `[Driver Number, Position]`", view=LiveTimingView(year, location, session_name))
 
 
 class LiveTimingView(discord.ui.View):
-    def __init__(self, year: int, location: str):
+    def __init__(self, year: int, location: str, session_name: str):
         super().__init__()
         self.year = year
         self.location = location
+        self.session_name = session_name
         self.selected_values = []
     
     @discord.ui.select(
@@ -69,18 +73,18 @@ class LiveTimingView(discord.ui.View):
             )
         ]
     )
-    async def select_callback(self, select, interaction: discord.Interaction): # the function called when the user is done selecting options
+    async def select_callback(self, select: discord.ui.Select, interaction: discord.Interaction): # the function called when the user is done selecting options
         self.selected_values = select.values
         await interaction.response.defer()
     
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.primary)
     async def button_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
         try:
-            logger.info(f"Start processing live timing for {self.year} {self.location} Grand Prix for user [{interaction.user.id}|{interaction.user.name}]")
+            logger.info(f"Start processing live timing for {self.year} {self.location} Grand Prix {self.session_name} session for user [{interaction.user.id}|{interaction.user.name}]")
             logger.info(f"Selected fields: {self.selected_values}")
             t0 = time.time()
             await interaction.response.defer()
-            builder = lt.LiveTimingBuilder(self.year, self.location)
+            builder = lt.LiveTimingBuilder(self.year, self.location, self.session_name)
             await builder.get_session_key()
             tasks = [
                 builder.add_drivers(),

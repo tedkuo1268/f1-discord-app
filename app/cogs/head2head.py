@@ -1,10 +1,11 @@
 import asyncio
 import time
+from typing import List
 
 import discord
 from discord.ext import commands
 
-from app.cogs.helpers import get_years, get_locations, get_drivers
+from app.cogs.helpers import get_years, get_locations, get_drivers_select_options
 from app.services import head2head as h2h
 from app.exceptions import OpenF1Error
 
@@ -29,63 +30,83 @@ class Head2Head(commands.Cog):
         autocomplete=discord.utils.basic_autocomplete(get_locations)
     )
     @discord.option(
-        name="driver1",
-        type=discord.SlashCommandOptionType.integer,
-        autocomplete=discord.utils.basic_autocomplete(get_drivers)
-    )
-    @discord.option(
-        name="driver2",
-        type=discord.SlashCommandOptionType.integer,
-        autocomplete=discord.utils.basic_autocomplete(get_drivers)
-    )
-    @discord.option(
-        name="num_of_laps",
-        description="Comparison for the most recent N laps",
-        type=discord.SlashCommandOptionType.integer,
-        choices=[1, 2, 3, 4, 5]
+        name="session_name",
+        type=discord.SlashCommandOptionType.string,
+        choices=["Practice 1", "Practice 2", "Practice 3", "Sprint Qualifying", "Qualifying", "Sprint", "Race"]
     )
     async def head2head(
         self,
         ctx: discord.ApplicationContext,
         year: discord.SlashCommandOptionType.integer,
         location: discord.SlashCommandOptionType.string,
-        driver1: discord.SlashCommandOptionType.integer,
-        driver2: discord.SlashCommandOptionType.integer,
-        num_of_laps: discord.SlashCommandOptionType.integer
+        session_name: discord.SlashCommandOptionType.string
     ):  
         logger.info(f"Head-to-head command invoked by user [{ctx.interaction.user.id}|{ctx.interaction.user.name}]")
-        if driver1 == driver2:
-            await ctx.respond("Please select two different drivers.")
-            return
-        
+        driver_options = await get_drivers_select_options(year, location, session_name)
         await ctx.respond(
-            f"Press the button to see the head-to-head result between {driver1} and {driver2} for {year} {location} Grand Prix", 
-            view=Head2HeadView(year, location, driver1, driver2, num_of_laps)
+            f"Select drivers and number of laps to see the head-to-head result for {year} {location} Grand Prix {session_name} session.", 
+            view=Head2HeadView(year, location, session_name, driver_options)
         )
+
+class DriversSelect(discord.ui.Select):
+    def __init__(self, driver_options: List[discord.SelectOption]):
+        super().__init__(
+            placeholder="Choose an option...",
+            min_values=2,
+            max_values=2,
+            options=driver_options
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        print(f"Selected values: {self.values}")
+        self.selected_values = self.values
+        await interaction.response.defer()
+
+
+class NumLapsSelect(discord.ui.Select):
+    def __init__(self):
+        super().__init__(
+            placeholder="Choose an option...",
+            min_values=1,
+            max_values=1,
+            options=[discord.SelectOption(label=str(i)) for i in range(1, 6)],
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        print(f"Selected values: {self.values}")
+        self.selected_values = self.values
+        await interaction.response.defer()
 
 
 class Head2HeadView(discord.ui.View):
-    def __init__(self, year: int, location: str, driver1: int, driver2: int, num_of_laps: int):
+    def __init__(self, year: int, location: str, session_name: str, driver_options: List[discord.SelectOption]):
         super().__init__()
         self.year = year
         self.location = location
-        self.driver1 = driver1
-        self.driver2 = driver2
-        self.num_of_laps = num_of_laps
-    
+        self.session_name = session_name
+        self.driver_options = driver_options
+        self.drivers_select = DriversSelect(driver_options)
+        self.num_laps_select = NumLapsSelect()
+
+        self.add_item(self.drivers_select)
+        self.add_item(self.num_laps_select)
+
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.primary)
     async def button_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
         try:
-            logger.info(f"Start processing head-to-head comparison between {self.driver1} and {self.driver2} for {self.year} {self.location} Grand Prix for user [{interaction.user.id}|{interaction.user.name}]")
+            driver1 = int(self.drivers_select.values[0])
+            driver2 = int(self.drivers_select.values[1])
+            num_of_laps = int(self.num_laps_select.values[0])
+            logger.info(f"Start processing head-to-head comparison between {driver1} and {driver2} for {self.year} {self.location} Grand Prix for user [{interaction.user.id}|{interaction.user.name}]")
             
             await interaction.response.defer()
             t0 = time.time()
             builder = h2h.Head2HeadBuilder(self.year, self.location)
             await builder.get_session_key()
             tasks = [
-                builder.add_drivers(self.driver1, self.driver2),
-                builder.add_laps_and_sectors_time(self.driver1, self.driver2, self.num_of_laps),
-                builder.add_interval(self.driver1, self.driver2)
+                builder.add_drivers(driver1, driver2),
+                builder.add_laps_and_sectors_time(driver1, driver2, num_of_laps),
+                builder.add_interval(driver1, driver2)
             ]
             
             await asyncio.gather(*tasks)
@@ -109,6 +130,18 @@ class Head2HeadView(discord.ui.View):
         except Exception as e:
             logger.exception(e)
             await interaction.followup.send(f"An error occurred.")
+        
+        
+
+    """ async def select_driver_callback(self, select: discord.ui.Select, interaction: discord.Interaction):
+        print(f"Selected values: {select.values}")
+        self.selected_values = select.values
+        await interaction.response.defer()
+
+    async def select_num_laps_callback(self, select: discord.ui.Select, interaction: discord.Interaction):
+        print(f"Selected values: {select.values}")
+        self.selected_values = select.values
+        await interaction.response.defer() """
 
 
 def setup(bot): # this is called by Pycord to setup the cog
